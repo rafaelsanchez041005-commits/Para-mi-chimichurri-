@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Para mi Chimichurri ?</title>
+<style>
+  :root{
+    --bg:#fff7f6;
+    --marfil:#fff6ee;
+    --rojo:#b71c1c;
+    --dorado:#c79a3a;
+    --text:#3b2b2b;
+    --soft:#f7eaea;
+  }
+  html,body{height:100%;margin:0;font-family: "Georgia", serif;color:var(--text);background:linear-gradient(180deg,var(--marfil),#fff);}
+  .wrap{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:28px;}
+  header{max-width:900px;text-align:center;margin-bottom:18px;}
+  h1{font-size:2.2rem;margin:0;color:var(--rojo);letter-spacing:1px;}
+  p.lead{margin:8px 0 0;font-size:1rem;color:#6b4b4b;}
+  .stage{width:100%;max-width:980px;background:rgba(255,255,255,0.6);border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,0.08);overflow:hidden;padding:18px;}
+  .topbar{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:8px 12px;flex-wrap:wrap;}
+  .levels{display:flex;gap:8px;}
+  .level-btn{background:transparent;border:2px solid #f0dede;padding:8px 12px;border-radius:12px;color:var(--rojo);cursor:pointer;font-weight:600;}
+  .level-btn.active{background:linear-gradient(90deg,var(--rojo),#ff6b6b);color:white;border-color:transparent;box-shadow:0 6px 18px rgba(183,28,28,0.18);}
+  .canvas{position:relative;height:520px;display:flex;align-items:center;justify-content:center;padding:18px;}
+  /* Heart container */
+  .heart-wrap{position:relative;width:360px;height:360px;display:flex;align-items:center;justify-content:center;flex-direction:column;}
+  svg.heart{width:320px;height:320px;filter:drop-shadow(0 12px 30px rgba(183,28,28,0.18));}
+  .pulse-layer{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;}
+  .phrase{position:absolute;left:50%;transform:translateX(-50%);font-family:"Brush Script MT",cursive;color:var(--dorado);font-size:1.2rem;opacity:0;transition:opacity .6s, transform .6s;}
+  .phrase.small{font-size:1rem;color:#6b2b2b;top:18%;}
+  .phrase.mid{top:50%;}
+  .phrase.final{bottom:12%;font-size:1.1rem;}
+  /* Map mini */
+  .map{position:absolute;right:18px;top:18px;width:220px;height:120px;background:linear-gradient(180deg,#fff,#fff7f0);border-radius:12px;padding:10px;border:1px solid #f0e0e0;box-shadow:0 6px 18px rgba(0,0,0,0.04);font-size:0.85rem;color:#5a3b3b;}
+  .map svg{width:100%;height:100%;}
+  .map circle { transition: cx 0.5s, cy 0.5s; } /* Animaci車n suave del punto */
+  /* Memories panel */
+  .memories{position:absolute;left:18px;top:18px;width:220px;height:120px;background:linear-gradient(180deg,#fff,#fff7f0);border-radius:12px;padding:10px;border:1px solid #f0e0e0;overflow:hidden;}
+  .memories h4{margin:0 0 6px;font-size:0.9rem;color:var(--rojo);}
+  .memories ul{margin:0;padding:0;list-style:none;font-size:0.82rem;color:#5a3b3b;}
+  .memories li{margin:6px 0;opacity:0.95;}
+  /* Footer action */
+  .actions{display:flex;gap:10px;justify-content:center;padding:12px;border-top:1px dashed rgba(0,0,0,0.04);background:linear-gradient(180deg,transparent,rgba(255,240,240,0.4));}
+  .btn{background:var(--rojo);color:white;padding:10px 16px;border-radius:12px;border:none;cursor:pointer;font-weight:700;box-shadow:0 8px 20px rgba(183,28,28,0.12);}
+  .btn.ghost{background:transparent;color:var(--rojo);border:2px solid rgba(183,28,28,0.12);}
+  /* Responsive */
+  @media(max-width:720px){
+    .canvas{height:640px;padding:8px; flex-direction:column;}
+    .map,.memories{position:static;width:100%;height:auto;margin:8px 0;border-radius:10px;}
+    .heart-wrap{width:280px;height:280px;}
+    svg.heart{width:260px;height:260px;}
+  }
+  /* Heart animation keyframes */
+  @keyframes beat {
+    0%{transform:scale(1);}
+    25%{transform:scale(1.06);}
+    40%{transform:scale(0.98);}
+    60%{transform:scale(1.02);}
+    100%{transform:scale(1);}
+  }
+  /* pulse glow */
+  .pulse{border-radius:50%;background:radial-gradient(circle at center, rgba(183,28,28,0.18), rgba(183,28,28,0.06) 40%, transparent 60%);width:100%;height:100%;opacity:0;transform:scale(0.8);transition:opacity .3s, transform .3s;}
+  .petals{position:absolute;inset:0;pointer-events:none;}
+  .petal{position:absolute;width:18px;height:10px;background:linear-gradient(180deg,#ffd6d6,#fff);border-radius:10px;opacity:0;transform:translateY(0) rotate(0deg);transition:transform 1.6s ease-out, opacity 1.6s;}
+  /* small puzzle */
+  .puzzle{display:flex;gap:6px;align-items:center;justify-content:center;margin-top:12px;}
+  .puzzle .dot{width:18px;height:18px;border-radius:50%;background:#f4dede;border:2px solid #ffecec;cursor:pointer;box-shadow:0 6px 12px rgba(0,0,0,0.04); transition: transform 0.2s, background 0.2s; }
+  .puzzle .dot:active{transform:scale(0.9);}
+  /* Contador de latidos */
+  .heartbeat-count{font-size:0.9rem; background: rgba(183,28,28,0.08); padding: 4px 10px; border-radius: 20px; }
+  /* Elemento solo para lectores de pantalla */
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Para mi Chimichurri</h1>
+    <p class="lead">Tres latidos. Tres niveles. Tres promesas. 〞 Rafael & Lianna</p>
+  </header>
+
+  <main class="stage" role="main" aria-live="polite">
+    <div class="topbar">
+      <div class="levels" aria-hidden="false">
+        <button class="level-btn active" data-level="1">Nivel 1 Encuentro</button>
+        <button class="level-btn" data-level="2">Nivel 2 Distancia</button>
+        <button class="level-btn" data-level="3">Nivel 3 Promesa</button>
+      </div>
+      <div style="display: flex; gap: 10px; align-items: center;">
+        <span class="heartbeat-count" id="heartbeatCounter">Latidos: 0</span>
+        <div style="font-size:0.9rem;color:#6b4b4b;">Aniversario 2 a?os 〞 27/02</div>
+      </div>
+    </div>
+
+    <div class="canvas">
+      <div class="memories" aria-hidden="false">
+        <h4>Recuerdos</h4>
+        <ul id="memList">
+          <li>Primer abrazo en la plaza 〞 aquel d赤a que no olvidamos</li>
+          <li>La canci車n que nos hizo llorar 〞 noche de lluvia</li>
+          <li>El viaje corto que supo a eternidad</li>
+        </ul>
+      </div>
+
+      <div class="heart-wrap" id="heartWrap">
+        <!-- SVG heart -->
+        <svg class="heart" viewBox="0 0 32 29" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path id="heartPath" d="M23.6 2c-2.4 0-4.1 1.6-5.6 3.3C16.5 3.6 14.8 2 12.4 2 8.1 2 5 5.4 5 9.7c0 7.1 11.6 13.3 11.6 13.3S28.2 16.8 28.2 9.7C28.2 5.4 25.1 2 23.6 2z" fill="url(#g)"/>
+          <defs>
+            <linearGradient id="g" x1="0" x2="1">
+              <stop offset="0" stop-color="#ff6b6b"/>
+              <stop offset="1" stop-color="#b71c1c"/>
+            </linearGradient>
+          </defs>
+        </svg>
+
+        <div class="pulse-layer">
+          <div class="pulse" id="pulse"></div>
+        </div>
+
+        <div class="phrase small" id="phrase1">fuiste tuuu</div>
+        <div class="phrase mid" id="phrase2">mmmmmmi chimichurri</div>
+        <div class="phrase final" id="phrase3">mi chuchicuchi</div>
+
+        <div class="petals" id="petals"></div>
+
+        <div class="puzzle" id="puzzle" aria-hidden="true">
+          <div class="dot" data-i="0" title="Punto 1"></div>
+          <div class="dot" data-i="1" title="Punto 2"></div>
+          <div class="dot" data-i="2" title="Punto 3"></div>
+        </div>
+        <div class="sr-only" id="puzzleHint">Puzzle: toca los puntos en orden secreto para desbloquear el nivel 3.</div>
+      </div>
+
+      <div class="map" aria-hidden="false">
+        <svg viewBox="0 0 220 120" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Mapa simb車lico">
+          <defs>
+            <linearGradient id="lineG" x1="0" x2="1"><stop offset="0" stop-color="#ffd6d6"/><stop offset="1" stop-color="#ffb6b6"/></linearGradient>
+          </defs>
+          <text x="10" y="18" font-size="11" fill="#6b4b4b" font-family="Georgia">Encrucijada</text>
+          <text x="170" y="100" font-size="11" fill="#6b4b4b" font-family="Georgia">Cumanayagua</text>
+          <circle cx="30" cy="30" r="6" fill="#b71c1c"/>
+          <circle cx="190" cy="90" r="6" fill="#b71c1c"/>
+          <path d="M36 34 C80 10,140 110,184 86" stroke="url(#lineG)" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+          <g id="movingDot">
+            <circle cx="36" cy="34" r="4" fill="#ffd6d6" style="transition: cx 0.5s, cy 0.5s;"/>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn" id="nextBtn">Siguiente latido</button>
+      <button class="btn ghost" id="resetBtn">Volver a empezar</button>
+    </div>
+    <div class="sr-only" id="levelAnnouncer" aria-live="polite"></div>
+  </main>
+
+  <footer style="margin-top:12px;font-size:0.85rem;color:#6b4b4b;">Hecho con todo mi coraz車n para Lianna 〞 Chimichurri</footer>
+</div>
+
+<script>
+/* Core logic: niveles y latidos */
+(function(){
+  const levels = 3;               // N迆mero total de niveles
+  let current = 1;                // Nivel activo (1,2,3)
+  const beatIntervals = [900, 620, 340]; // Intervalos para cada nivel (ms)
+  let beatTimer = null;
+  let beatCount = 0;               // Contador de latidos
+
+  // Elementos del DOM
+  const levelBtns = document.querySelectorAll('.level-btn');
+  const phrase1 = document.getElementById('phrase1');
+  const phrase2 = document.getElementById('phrase2');
+  const phrase3 = document.getElementById('phrase3');
+  const pulse = document.getElementById('pulse');
+  const heart = document.querySelector('svg.heart');
+  const nextBtn = document.getElementById('nextBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const petals = document.getElementById('petals');
+  const puzzle = document.getElementById('puzzle');
+  const movingDotCircle = document.querySelector('#movingDot circle');
+  const heartbeatCounter = document.getElementById('heartbeatCounter');
+  const levelAnnouncer = document.getElementById('levelAnnouncer');
+
+  // Variables para el puzzle
+  const dots = document.querySelectorAll('.puzzle .dot');
+  const secretSequence = [0, 2, 1]; // Orden secreto para resolver el puzzle
+  let puzzleProgress = 0;            // Posici車n en la secuencia
+
+  // Coordenadas del mapa para cada nivel (puntos intermedios)
+  const mapPoints = [
+    { cx: 36, cy: 34 },  // Nivel 1 (Encrucijada)
+    { cx: 80, cy: 20 },  // Nivel 2 (punto intermedio)
+    { cx: 184, cy: 86 }  // Nivel 3 (Cumanayagua)
+  ];
+
+  // Funci車n para cambiar de nivel
+  function setActiveLevel(n) {
+    if (n < 1 || n > levels) return;
+    current = n;
+
+    // Actualizar botones
+    levelBtns.forEach(b => b.classList.toggle('active', Number(b.dataset.level) === n));
+
+    // Mostrar frases seg迆n nivel
+    phrase1.style.opacity = n >= 1 ? 1 : 0;
+    phrase1.style.transform = n >= 1 ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(-8px)';
+    phrase2.style.opacity = n >= 2 ? 1 : 0;
+    phrase2.style.transform = n >= 2 ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(-8px)';
+    phrase3.style.opacity = n >= 3 ? 1 : 0;
+    phrase3.style.transform = n >= 3 ? 'translateX(-50%) translateY(0)' : 'translateX(-50%) translateY(-8px)';
+
+    // Mostrar/ocultar puzzle (solo nivel 2)
+    puzzle.style.display = n === 2 ? 'flex' : 'none';
+
+    // Animar punto del mapa
+    if (movingDotCircle) {
+      movingDotCircle.setAttribute('cx', mapPoints[n-1].cx);
+      movingDotCircle.setAttribute('cy', mapPoints[n-1].cy);
+    }
+
+    // Ajustar ritmo del latido
+    adjustBeatForLevel(n);
+
+    // Anunciar cambio a lectores de pantalla
+    levelAnnouncer.textContent = `Nivel ${n}: ${n===1?'Encuentro':n===2?'Distancia':'Promesa'}`;
+  }
+
+  // Ajustar intervalo de latido
+  function adjustBeatForLevel(n) {
+    const interval = beatIntervals[n-1];
+    restartBeat(interval);
+  }
+
+  // Funci車n que ejecuta cada latido
+  function doBeat() {
+    // Animaci車n del coraz車n
+    heart.style.animation = 'beat 420ms ease-in-out';
+    pulse.style.opacity = 0.9;
+    pulse.style.transform = 'scale(1)';
+    setTimeout(() => {
+      heart.style.animation = '';
+      pulse.style.opacity = 0;
+      pulse.style.transform = 'scale(0.9)';
+    }, 420);
+
+    // P谷talos aleatorios en nivel 3 (m芍s intensidad)
+    if (current === 3) {
+      if (Math.random() > 0.3) spawnPetal();
+      if (Math.random() > 0.7) spawnPetal(); // a veces dos
+    }
+
+    // Incrementar y mostrar contador de latidos
+    beatCount++;
+    heartbeatCounter.textContent = `Latidos: ${beatCount}`;
+  }
+
+  // Reiniciar el intervalo de latido
+  function restartBeat(intervalMs) {
+    if (beatTimer) clearInterval(beatTimer);
+    doBeat(); // un latido inmediato
+    beatTimer = setInterval(doBeat, intervalMs);
+  }
+
+  // Crear un p谷talo
+  function spawnPetal() {
+    const p = document.createElement('div');
+    p.className = 'petal';
+    p.style.left = (30 + Math.random() * 60) + '%';
+    p.style.top = (10 + Math.random() * 70) + '%';
+    p.style.opacity = '1';
+    p.style.transform = 'translateY(0) rotate(' + (Math.random() * 80 - 40) + 'deg)';
+    petals.appendChild(p);
+    requestAnimationFrame(() => {
+      p.style.transform = 'translateY(-120px) rotate(' + (Math.random() * 360 - 180) + 'deg)';
+      p.style.opacity = '0';
+    });
+    setTimeout(() => p.remove(), 1600);
+  }
+
+  // Lluvia de p谷talos (para nivel 3 o al terminar)
+  function flowerShower(count = 12) {
+    for (let i = 0; i < count; i++) {
+      setTimeout(spawnPetal, i * 100);
+    }
+  }
+
+  // Reiniciar todo (nivel 1, p谷talos, puzzle, contador)
+  function resetEverything() {
+    setActiveLevel(1);
+    // Limpiar p谷talos
+    petals.innerHTML = '';
+    // Reiniciar puzzle: colores y progreso
+    dots.forEach(d => d.style.background = '');
+    puzzleProgress = 0;
+    // Reiniciar contador de latidos
+    beatCount = 0;
+    heartbeatCounter.textContent = `Latidos: 0`;
+    // Mensaje de accesibilidad
+    levelAnnouncer.textContent = 'Reiniciado a nivel 1';
+  }
+
+  // --- Event Listeners ---
+
+  // Botones de nivel
+  levelBtns.forEach(b => {
+    b.addEventListener('click', () => setActiveLevel(Number(b.dataset.level)));
+  });
+
+  // Puzzle: detectar clicks en orden
+  dots.forEach(d => {
+    d.addEventListener('click', () => {
+      if (current !== 2) return; // Solo funciona en nivel 2
+
+      const i = Number(d.dataset.i);
+      // Peque?o feedback visual
+      d.style.transform = 'scale(0.8)';
+      setTimeout(() => d.style.transform = 'scale(1)', 150);
+
+      if (i === secretSequence[puzzleProgress]) {
+        // Acierto
+        d.style.background = '#ffb6b6';
+        puzzleProgress++;
+        if (puzzleProgress === secretSequence.length) {
+          // Puzzle completado: activar nivel 3 y lanzar p谷talos
+          setActiveLevel(3);
+          flowerShower(10);
+          // Restaurar colores y progreso
+          dots.forEach(dot => dot.style.background = '');
+          puzzleProgress = 0;
+        }
+      } else {
+        // Fallo: reiniciar progreso
+        dots.forEach(dot => dot.style.background = '');
+        puzzleProgress = 0;
+      }
+    });
+  });
+
+  // Bot車n "Siguiente latido"
+  nextBtn.addEventListener('click', () => {
+    if (current < levels) {
+      setActiveLevel(current + 1);
+    } else {
+      // Ya en nivel 3: hacer una lluvia de p谷talos extra y mensaje
+      flowerShower(16);
+      // Animaci車n extra en la frase final
+      phrase3.style.transition = 'opacity 1s, transform 1s';
+      phrase3.style.opacity = 1;
+      phrase3.style.transform = 'translateX(-50%) translateY(-6px)';
+      levelAnnouncer.textContent = '?Te amo! Has llegado al final.';
+    }
+  });
+
+  // Bot車n "Volver a empezar"
+  resetBtn.addEventListener('click', resetEverything);
+
+  // Tecla espacio: avanza nivel (solo si no hay foco en botones o elementos)
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+      // Evitar que la p芍gina haga scroll si el foco no est芍 en un input
+      if (!(document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.isContentEditable)) {
+        e.preventDefault();
+        nextBtn.click();
+      }
+    }
+  });
+
+  // Inicializar: nivel 1
+  setActiveLevel(1);
+
+  // Peque?o detalle: al cargar, un par de p谷talos de bienvenida
+  setTimeout(() => { flowerShower(4); }, 500);
+})();
+</script>
+</body>
+</html>
